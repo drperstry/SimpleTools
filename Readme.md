@@ -61,7 +61,6 @@ usage:
 
 2: PicSteg.py Unhide [-h] --SecretImages SECRETIMAGES [SECRETIMAGES ...] --NewFile NEWFILE
 
-</br>
 <h2> SymmetricKey-AES</h2>
 Encrypt/Decrypt text file using symmetric key algorithm (AES)
 </br>
