@@ -13,14 +13,12 @@ to connect to 15 or more consecutive ports within a 5 second window. PSDetect wi
 to get the IP header out of Ethernet frames returned via pcapy listening function
 
 <h2> BulkDelay: bulk-delay Subtitle of a srt file</h2>
-
-</br><strong>usage:  bulkDelay(OldSrt, NewSrt, Opp, time)
+<strong>usage:  bulkDelay(OldSrt, NewSrt, Opp, time)
 </br><strong>OldSrt</strong>: the old Srt file Path
 </br><strong>NewSrt</strong>: the new Srt file Path
 </br><strong>Opp</strong>: "Add" or "Sub"
 </br><strong>time</strong>: the time to add/subtract
 
-</br>
 <h2> diffie-hellman</h2>
 Share a symmetric key between a client and server using Diffie‐Hellman protocol.
 
@@ -53,7 +51,6 @@ course_records = Get_records_from_file(inputfilepath="courses_records.txt", GPA_
 <br>
 print(Put_data_in_file(course_records=course_records, outputfile="Final_GPA.txt"))
 
-</br>
 <h2> PicSteg</h2>
 
 Check "PicSteg.py -h"
