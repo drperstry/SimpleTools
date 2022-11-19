@@ -1,0 +1,1 @@
+Encrypt/Decrypt text file using symmetric key algorithm (AES)
