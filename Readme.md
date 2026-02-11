@@ -1,79 +1,102 @@
-# Simple tools:
+# SimpleTools
 
-<h2> Detect&PortScanner: a port scanner and detector</h2>
+A collection of Python tools for cryptography, network security, steganography, data privacy, and utilities.
 
-PSDetect will use the pcapy library to listen to incoming connections,
-and report the presence of a scanner if a single machine attempted to connect to 15 or more consecutive
-ports within a 5 second window. PSDetect should therefore be able to detect when PortScan is used.
-PSDetect should listen on all network interfaces, and should take no arguments. It should not produce
-any output until a scanner is detected. When a scanner is detected, it should print out the message:
-Scanner detected. The scanner originated from host A.B.C.D.
-Where A.B.C.D should be replaced with either the IP address or the hostname of the machine that attempted
-to connect to 15 or more consecutive ports within a 5 second window. PSDetect will use impacket library
-to get the IP header out of Ethernet frames returned via pcapy listening function
+## Tools
 
-<h2> BulkDelay: bulk-delay Subtitle of a srt file</h2>
-<strong>usage:  bulkDelay(OldSrt, NewSrt, Opp, time)
-</br><strong>OldSrt</strong>: the old Srt file Path
-</br><strong>NewSrt</strong>: the new Srt file Path
-</br><strong>Opp</strong>: "Add" or "Sub"
-</br><strong>time</strong>: the time to add/subtract
+### Network Scanner (`Detect&PortScanner/network_scanner.py`)
 
-<h2> diffie-hellman</h2>
-Share a symmetric key between a client and server using Diffie‐Hellman protocol.
+Scan ports on a target host or detect incoming port scans.
 
-</br>
-<h2> FreqAnalysis</h2>
-finding the number of Frequency every letter is in a text file.
+```bash
+python network_scanner.py scan --host 192.168.1.1 --ports 1-1024
+python network_scanner.py detect   # requires root
+```
 
-</br>
-<h2> GPA_calculator</h2>
+### AES Encryption (`SymmetricKey-AES/AES.py`)
 
-important setup:
-<b>important setup: </b>
-<br>
-in the inputfilepath, the file should have the courses grades in the following format:
-<br>
-course	weight	letter
-<br>
--this is an example of the input file:
-<br>
+Encrypt/decrypt files using AES-128-CBC with PKCS7 padding.
+
+```bash
+python AES.py encrypt --key YOUR16BYTEKEY --plain Plain.txt --cipher Cipher.txt
+python AES.py decrypt --key YOUR16BYTEKEY --cipher Cipher.txt --plain Plain.txt
+```
+
+### RSA Encryption (`PublicKey-RSA/RSA.py`)
+
+Generate RSA key pairs and encrypt/decrypt files using RSA + AES hybrid encryption.
+
+```bash
+python RSA.py generate --output-dir .
+python RSA.py encrypt --public-key PublicKey.pem --plaintext Plain.txt
+python RSA.py decrypt --private-key PrivateKey.pem --ciphertext EncryptedText.bin
+```
+
+### Diffie-Hellman Key Exchange (`diffie-hellman/diffie_hellman.py`)
+
+Share a symmetric key between a client and server using the Diffie-Hellman protocol.
+
+```bash
+python diffie_hellman.py server --p 23 --g 5 --b 6
+python diffie_hellman.py client --a 4
+```
+
+### Frequency Analysis (`FreqAnalysis/FreqAnalysis.py`)
+
+Analyze letter frequency in a text file (useful for cryptanalysis).
+
+```bash
+python FreqAnalysis.py --input input.txt
+```
+
+### Image Steganography (`PicSteg/PicSteg.py`)
+
+Hide and extract secret text data in PNG images.
+
+```bash
+python PicSteg.py hide --images img1.png img2.png --secret secret.txt --output output.png
+python PicSteg.py unhide --images secret0.png secret1.png --output hidden.txt
+```
+
+### K-Anonymization (`K-Anonymization/K-Anonymization.py`)
+
+Apply k-anonymization to a dataset by recursively partitioning and generalizing quasi-identifiers.
+
+```bash
+python K-Anonymization.py --input ipums.txt --k 3
+```
+
+### GPA Calculator (`GPA_calculator/GPA_calculator.py`)
+
+Calculate GPA from a course records file.
+
+```bash
+python GPA_calculator.py --input courses.txt --output report.txt --scale 4
+```
+
+Input file format (one course per line):
+```
 MATH101 4 C+
-<br>
-MATH102 4 -
-<br>
-MATH102 3 D
-<br>
-<br>
-how to use the code:
-<br>
-course_records = Get_records_from_file(inputfilepath="courses_records.txt", GPA_weight=4)
-<br>
-print(Put_data_in_file(course_records=course_records, outputfile="Final_GPA.txt"))
+PHYS201 3 B
+```
 
-<h2> PicSteg</h2>
+### Subtitle Bulk Delay (`bulk-delay Subtitle/BulkDelay.py`)
 
-Check "PicSteg.py -h"
-"Make sure to check all images before using, this script doesn't check for correctness"
-usage:
+Add or subtract a time offset from all timestamps in an SRT subtitle file.
 
-1: PicSteg.py Hide [-h] --images IMAGES [IMAGES ...] --secret SECRET --NewImage NEWIMAGE
+```bash
+python BulkDelay.py --input movie.srt --output fixed.srt --operation add --offset 00:00:02,500
+```
 
-2: PicSteg.py Unhide [-h] --SecretImages SECRETIMAGES [SECRETIMAGES ...] --NewFile NEWFILE
+### isPrime (`isPrime.ipynb`)
 
-<h2> SymmetricKey-AES</h2>
-Encrypt/Decrypt text file using symmetric key algorithm (AES)
-</br>
-<h2> PublicKey-RSA</h2>
-Generate an asymmetric key pair (public and private) 
-Decrypt/Encrypt the text file using the private key
+Jupyter notebook demonstrating optimization techniques for prime number checking.
 
-</br>
-<h2>isPrime</h2>
-finding prime numbers can take a long time, this show case optimization scenario
+## Dependencies
 
-</br>
-<h2>K-Anonymization</h2>
-implementing K-Anonymization algorithm#� �S�i�m�p�l�e�T�o�o�l�s�-�
-�
-�
+```
+pycryptodome
+python-nmap
+scapy
+Pillow
+```
