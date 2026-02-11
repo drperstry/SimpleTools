@@ -1,240 +1,202 @@
-# This code is originally from https://betterprogramming.pub/image-steganography-using-python-2250896e48b9
-# Edited by Abdulrahman Alhuwais to be working in encoding and decoding for multiple pictures.
+# Image Steganography - Hide and extract secret messages in PNG images.
+# Based on: https://betterprogramming.pub/image-steganography-using-python-2250896e48b9
+# Extended by Abdulrahman Alhuwais for multi-image encoding/decoding.
+#
+# Note: Only PNG images are supported (not JPG).
 
-# more references
-    # https://www.geeksforgeeks.org/program-decimal-binary-conversion/
-    # https://www.geeksforgeeks.org/working-images-python/
-    # https://dev.to/erikwhiting88/let-s-hide-a-secret-message-in-an-image-with-python-and-opencv-1jf5
-    # A code along with the dependencies can be found here: https://github.com/goelashwin36/image-steganography
-
-# Python program implementing Image Steganography
-# added the function of multiple pictures.
-# this code doens't support JPG pictures
-# Possible improvements
-# need to consider limiting the amount of data can be hidden in this file as this doens't work for every picture!!
-
-# PIL module is used to extract pixels of image and modify it
-from PIL import Image
 import argparse
+import sys
 import textwrap
 
+from PIL import Image
 
-# Convert encoding data into 8-bit binary
-# form using ASCII value of characters
-def genData(data):
 
-        # list of binary codes
-        # of given data
-        newd = []
+def _to_binary(data):
+    """Convert string data to a list of 8-bit binary strings."""
+    return [format(ord(ch), "08b") for ch in data]
 
-        for i in data:
-            newd.append(format(ord(i), '08b'))
-        return newd
 
-# Pixels are modified according to the
-# 8-bit binary data and finally returned
-def modPix(pix, data):
+def _modify_pixels(pixel_iter, data):
+    """Modify pixel LSBs to encode data. Yields modified pixel tuples."""
+    binary_data = _to_binary(data)
 
-    datalist = genData(data)
-    lendata = len(datalist)
-    imdata = iter(pix)
-    #this for loop is not simple
-    for i in range(lendata):
+    for i, bits in enumerate(binary_data):
+        # Extract 3 pixels (9 values) for each character (8 bits + 1 stop bit)
+        pixels = [
+            value
+            for value in pixel_iter.__next__()[:3]
+            + pixel_iter.__next__()[:3]
+            + pixel_iter.__next__()[:3]
+        ]
 
-        # Extracting 3 pixels at a time
-        pix = [value for value in imdata.__next__()[:3] +
-                                imdata.__next__()[:3] +
-                                imdata.__next__()[:3]]
+        # Set LSB: even = 0, odd = 1
+        for j in range(8):
+            if bits[j] == "0" and pixels[j] % 2 != 0:
+                pixels[j] -= 1
+            elif bits[j] == "1" and pixels[j] % 2 == 0:
+                pixels[j] += 1 if pixels[j] == 0 else -1
 
-        # Pixel value should be made
-        # odd for 1 and even for 0
-        for j in range(0, 8):
-            if (datalist[i][j] == '0' and pix[j]% 2 != 0):
-                pix[j] -= 1
-
-            elif (datalist[i][j] == '1' and pix[j] % 2 == 0):
-                if(pix[j] != 0):
-                    pix[j] -= 1
-                else:
-                    pix[j] += 1
-                # pix[j] -= 1
-
-        # Eighth pixel of every set tells
-        # whether to stop ot read further.
-        # 0 means keep reading; 1 means thec
-        # message is over.
-        if (i == lendata - 1):
-            if (pix[-1] % 2 == 0):
-                if(pix[-1] != 0):
-                    pix[-1] -= 1
-                else:
-                    pix[-1] += 1
-
+        # Last pixel LSB: odd = end of message, even = continue
+        if i == len(binary_data) - 1:
+            if pixels[-1] % 2 == 0:
+                pixels[-1] += 1 if pixels[-1] == 0 else -1
         else:
-            if (pix[-1] % 2 != 0):
-                pix[-1] -= 1
+            if pixels[-1] % 2 != 0:
+                pixels[-1] -= 1
 
-        pix = tuple(pix)
-        yield pix[0:3]
-        yield pix[3:6]
-        yield pix[6:9]
+        pixels = tuple(pixels)
+        yield pixels[0:3]
+        yield pixels[3:6]
+        yield pixels[6:9]
 
-def divideString(string, n):
-    str_size = len(string)
-    # Calculate the size of parts to find the division points
-    part_size = int(str_size/n)
-    k = 1
-    str1=""
-    strlist=[]
-    for i in string:
-        str1=str1+i    
-        if k % part_size == 0:
-            strlist.append(str1)
-            str1=""
-        k += 1
-    if(len(str1)!=0):
-        strlist[-1]+=(str1)
-    return strlist
 
-def encode_enc(newimgs, data):
-    #newimgs should be a list of images, data should be a list of chunk of data 
-    # divided to be same as number of images
-    #making multiple values of w in the same way
-    #divide data
-    w=[]
-    for img in newimgs:
-        w.append(img.size[0])
-    
-    dataList=divideString(data, len(newimgs))
-    #dataList, w
-    #2 outer for loops for each data and for each img,
-    for i, img in enumerate(newimgs):
-        (x, y) = (0, 0)
-        #pixel for ordering the imgs
-        # pix = [value for value in img.__next__()[:3]]
-        pix=(i,0,0)
-        img.putpixel((x, y), pix)
-        (x, y) = (1, 0)
+def _split_string(text, n):
+    """Split a string into n roughly equal parts."""
+    part_size = len(text) // n
+    parts = []
+    start = 0
+    for i in range(n):
+        end = start + part_size if i < n - 1 else len(text)
+        parts.append(text[start:end])
+        start = end
+    return parts
 
-        for pixel in modPix(img.getdata(), dataList[i]):
-            # Putting modified pixels in the new image
+
+def encode(image_paths, secret_file, output_base):
+    """Hide secret file data across multiple PNG images."""
+    images = []
+    for path in image_paths:
+        try:
+            images.append(Image.open(path, "r"))
+        except FileNotFoundError:
+            print(f"Error: Image '{path}' not found.", file=sys.stderr)
+            return False
+
+    try:
+        with open(secret_file, "r") as f:
+            data = f.read()
+    except FileNotFoundError:
+        print(f"Error: Secret file '{secret_file}' not found.", file=sys.stderr)
+        return False
+
+    if not data:
+        print("Error: Secret file is empty.", file=sys.stderr)
+        return False
+
+    new_images = [img.copy() for img in images]
+    data_chunks = _split_string(data, len(new_images))
+
+    for i, img in enumerate(new_images):
+        w = img.size[0]
+
+        # First pixel stores image ordering index
+        img.putpixel((0, 0), (i, 0, 0))
+
+        x, y = 1, 0
+        for pixel in _modify_pixels(iter(img.getdata()), data_chunks[i]):
             img.putpixel((x, y), pixel)
-            if (x == w[i] - 1):
+            if x == w - 1:
                 x = 0
                 y += 1
             else:
                 x += 1
 
-# Encode data into image
-def encode(ImagesIn, file, ImagesOut):
-    #enter multiple images name
-    string1=""
-    imgs=[]
-    for image in ImagesIn:
-        imgs.append(Image.open(image, 'r'))
+    # Save output images
+    name_base, ext = output_base.rsplit(".", 1)
+    for i, img in enumerate(new_images):
+        output_path = f"{name_base}{i}.{ext}"
+        img.save(output_path, ext.upper())
+        print(f"Saved: {output_path}")
 
-    if (not open(file)):
-        raise ValueError('Secret file does not exist')
-    
-    with open(file, "r") as f:
-        data=f.read()
-    #copy all images like next line, a list  enter it in the encode_enc method
-    newimgs =[]
-    for img in imgs:
-        newimgs.append(img.copy())
-    
-    #inputting the list of newimgs and data
-    encode_enc(newimgs, data)
+    return True
 
-    #save an img for each new img exist
-    for i, newimg in enumerate(newimgs):
-        new_img_name=ImagesOut
-        name=new_img_name.split(".")
-    
-        name=name[0]+str(i)+"."+name[-1]
-        new_img_name=name
-        newimg.save(new_img_name, str(new_img_name.split(".")[1].upper()))
 
-# Decode the data in the image
-def decode(SecretImages, file):
+def decode(secret_image_paths, output_file):
+    """Extract hidden data from steganographic images."""
+    images = []
+    for path in secret_image_paths:
+        try:
+            images.append(Image.open(path, "r"))
+        except FileNotFoundError:
+            print(f"Error: Image '{path}' not found.", file=sys.stderr)
+            return False
 
-    imgs=[]
-    for img in SecretImages:
-        imgs.append(Image.open(img, 'r'))
-    
-    data = ''
-    #for each img in the list do iter
-    imgsdata=[]
-    for img in imgs:
-        imgsdata.append(iter(img.getdata()))
-    
-    #ordering the imgs based on first color on the first pixel
-    imgsdataOrdered=[]
-    for data in imgsdata:
-        pixel= data.__next__()[:3]
-        imgsdataOrdered.append([data, pixel[0]])
+    # Read image data iterators and their ordering index
+    image_data = []
+    for img in images:
+        data_iter = iter(img.getdata())
+        first_pixel = data_iter.__next__()[:3]
+        order_index = first_pixel[0]
+        image_data.append((order_index, data_iter))
 
-    imgsdata=[]
-    for ordering in range(len(imgsdataOrdered)):
-        for ls in imgsdataOrdered:
-            for index, x in enumerate(ls):
-                if(index==1):
-                    if(x==ordering):
-                        imgsdata.append(ls[0])
+    # Sort by ordering index
+    image_data.sort(key=lambda x: x[0])
 
-    for imgdata in imgsdata:
-        data=''
-        #this to skip first pixel which was used for ordering
-        while(True):
-            pixels = [value for value in imgdata.__next__()[:3] +
-                                    imgdata.__next__()[:3] +
-                                    imgdata.__next__()[:3]]
-            # string of binary data
-            binstr = ''
+    # Extract data from each image in order
+    with open(output_file, "w") as f:
+        for _, data_iter in image_data:
+            chunk = ""
+            while True:
+                pixels = [
+                    value
+                    for value in data_iter.__next__()[:3]
+                    + data_iter.__next__()[:3]
+                    + data_iter.__next__()[:3]
+                ]
 
-            for i in pixels[:8]:
-                if (i % 2 == 0):
-                    binstr += '0'
-                else:
-                    binstr += '1'
+                binary_str = ""
+                for val in pixels[:8]:
+                    binary_str += "0" if val % 2 == 0 else "1"
 
-            data += chr(int(binstr, 2))
-            if (pixels[-1] % 2 != 0):
-                with open(file, "a") as f:
-                    f.write(data)
+                chunk += chr(int(binary_str, 2))
+
+                if pixels[-1] % 2 != 0:
+                    f.write(chunk)
                     break
-    return "Done Check the new file to see hidden data"
-# Main Function
+
+    print(f"Hidden data extracted to '{output_file}'")
+    return True
+
+
 def main():
-    desc=textwrap.dedent('''Pic Steganography:
+    desc = textwrap.dedent("""\
+        Image Steganography
 
-            usage: 
-                1: PicSteg.py Hide [-h] --images IMAGES [IMAGES ...] --secret SECRET --NewImage NEWIMAGE
-                2: PicSteg.py Unhide [-h] --SecretImages SECRETIMAGES [SECRETIMAGES ...] --NewFile NEWFILE''')
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=desc)
-    subparser=parser.add_subparsers(dest='Command')
-    Hide=subparser.add_parser('Hide')
-    Unhide=subparser.add_parser('Unhide')
+        Hide secret text data inside PNG images or extract hidden data.
+        Supports distributing data across multiple images.
 
+        Note: Only PNG images are supported.
 
-    Hide.add_argument("--images", '-I', nargs="+",type=str, help="--images img1.png, img2.png, ...", required=True)
-    Hide.add_argument('--secret', "-S", type=str, help='--secret file_name', required=True)
-    Hide.add_argument('--NewImage', "-NI", type=str, help='--NewImage file_name', required=True)
+        Usage:
+            python PicSteg.py hide --images img1.png img2.png --secret secret.txt --output output.png
+            python PicSteg.py unhide --images secret0.png secret1.png --output hidden.txt
+    """)
 
-    Unhide.add_argument("--SecretImages","-SI" , nargs="+", type=str, help="--SecretImages img1.png, img2.png, ...", required=True)
-    Unhide.add_argument('--NewFile', "-NF", type=str, help='--NewFile file_name', required=True)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=desc,
+    )
+    subparsers = parser.add_subparsers(dest="command")
 
+    hide_parser = subparsers.add_parser("hide", help="Hide data in images")
+    hide_parser.add_argument("--images", "-I", nargs="+", type=str, required=True, help="Input carrier images")
+    hide_parser.add_argument("--secret", "-S", type=str, required=True, help="Secret text file to hide")
+    hide_parser.add_argument("--output", "-O", type=str, required=True, help="Output image base name (e.g., output.png)")
+
+    unhide_parser = subparsers.add_parser("unhide", help="Extract hidden data from images")
+    unhide_parser.add_argument("--images", "-I", nargs="+", type=str, required=True, help="Steganographic images")
+    unhide_parser.add_argument("--output", "-O", type=str, required=True, help="Output file for extracted data")
 
     args = parser.parse_args()
-    if args.Command == None:
-        print("choose command Hide or Unhide")
-    elif args.Command == 'Hide':
-        encode(args.images, args.secret, args.NewImage)
 
-    elif args.Command == 'Unhide':
-        decode(args.SecretImages, args.NewFile)
+    if args.command is None:
+        parser.print_help()
+        sys.exit(1)
+    elif args.command == "hide":
+        encode(args.images, args.secret, args.output)
+    elif args.command == "unhide":
+        decode(args.images, args.output)
 
-# Driver Code
-if __name__ == '__main__' :
-    # Calling main function
+
+if __name__ == "__main__":
     main()

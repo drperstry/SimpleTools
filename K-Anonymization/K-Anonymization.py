@@ -1,155 +1,162 @@
+import argparse
 import random
-#objects class
-class record:
-    def __init__(self) -> None:
-        pass
-    def Dim(self,k):
-        if k==0:
-            return self.Age
-        elif k==1:
-            return self.Gender
-        elif k==2:
-            return self.Marital
-        elif k==3:
-            return self.Race_Status
-        elif k==4:
-            return self.Birthplace
-        elif k==5:
-            return self.Language
-        elif k==6:
-            return self.Occupation
-        elif k==7:
-            return self.Income
+import sys
+import textwrap
 
-    def __init__(self, Age, Gender, Marital, Race_Status, Birthplace, Language, Occupation, Income):
-        self.Age=Age
-        self.Gender=Gender
-        self.Marital=Marital
-        self.Race_Status=Race_Status
-        self.Birthplace=Birthplace
-        self.Language=Language
-        self.Occupation=Occupation
-        self.Income=Income
-    def str(self):
-        return "Age: {} , Gender: {} , Marital: {} , Race_Status: {} , Birthplace: {} , Language: {} , Occupation: {} , Income: {} K".format(self.Age, self.Gender, self.Marital, self.Race_Status, self.Birthplace, self.Language, self.Occupation, self.Income)
-#reading list of records, from file.
-path= "ipums.txt"        #change the path here
-i=0
-listAll= []              #list of all objects
-with open(path, "r") as file:
-    lines=file.readlines()
-    for line in lines:
-        rec=line.split()
-        rec=record(int(rec[0]), int(rec[1]), int(rec[2]), int(rec[3]), int(rec[4]), int(rec[5]), int(rec[6]), int(rec[7]))
-        listAll.append(rec)
+DIMENSIONS = ["Age", "Gender", "Marital", "Race_Status", "Birthplace", "Language", "Occupation", "Income"]
 
-#CreateQuasiList AND FindFreqSet are only two show the freqSet
-def CreateQuasiList(list, Dim):
-    New_List=[]
-    for i in list:
-        New_List.append(i.Dim(Dim))
-    New_List=sorted(New_List)
-    return New_List
 
-def FindFreqSet(list):
-    fs=[[],[]]
-    for i in list:
-        if i in fs[0]:
-            fs[1][fs[0].index(i)]+=1
+class Record:
+    """Represents a single data record with quasi-identifier attributes."""
+
+    def __init__(self, age, gender, marital, race_status, birthplace, language, occupation, income):
+        self.Age = age
+        self.Gender = gender
+        self.Marital = marital
+        self.Race_Status = race_status
+        self.Birthplace = birthplace
+        self.Language = language
+        self.Occupation = occupation
+        self.Income = income
+
+    def dim(self, k):
+        """Access attribute by dimension index."""
+        return getattr(self, DIMENSIONS[k])
+
+    def __str__(self):
+        return (
+            f"Age: {self.Age}, Gender: {self.Gender}, Marital: {self.Marital}, "
+            f"Race_Status: {self.Race_Status}, Birthplace: {self.Birthplace}, "
+            f"Language: {self.Language}, Occupation: {self.Occupation}, Income: {self.Income}"
+        )
+
+
+def load_records(filepath):
+    """Load records from a space-separated text file."""
+    records = []
+    try:
+        with open(filepath, "r") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) < 8:
+                    continue
+                records.append(Record(*[int(x) for x in parts[:8]]))
+    except FileNotFoundError:
+        print(f"Error: File '{filepath}' not found.", file=sys.stderr)
+        sys.exit(1)
+    return records
+
+
+def get_dimension_values(records, dim):
+    """Extract and sort values for a given dimension from a list of records."""
+    return sorted(r.dim(dim) for r in records)
+
+
+def find_freq_set(values):
+    """Build a frequency set: [[unique_values], [counts]]."""
+    unique = []
+    counts = []
+    for v in values:
+        if v in unique:
+            counts[unique.index(v)] += 1
         else:
-            fs[0].append(i)
-            fs[1].append(1)
-    return fs
+            unique.append(v)
+            counts.append(1)
+    return [unique, counts]
 
-#input:FreqSet
-#output: freqSet with cumulative freq column
-def FindCumulativeFreq(list):
-    list2=list.copy()
-    list2.append([])
-    for i in list2[1]:
-        if(len(list2[2])>0):
-            list2[2].append(i+list2[2][-1])
-        else:
-            list2[2].append(list2[1][0])
-    return list2
 
-#input: freqSet with cumulative freq column, and original list of QusaiIdentifier
-#output: median
-def FindMedian(list, listQ):
-    #last item in cumlative column is the total size of sample so we use it check for even or odd number of records.
-    if(list[2][-1]%2==0):
-        r=random.randint(1, 2)
-        if r==1:
-            return int(list[2][-1]/2)
-        else:
-            return int(list[2][-1]/2-1)
+def find_cumulative_freq(freq_set):
+    """Add cumulative frequency column to a frequency set."""
+    result = [freq_set[0], freq_set[1], []]
+    cumulative = 0
+    for count in freq_set[1]:
+        cumulative += count
+        result[2].append(cumulative)
+    return result
+
+
+def find_median_index(cum_freq_set):
+    """Find the median split index from a cumulative frequency set."""
+    total = cum_freq_set[2][-1]
+    if total % 2 == 0:
+        target = total // 2 - random.randint(0, 1)
     else:
-        return int(list[2][-1]/2-1)
-
-#summary creation
-def summary(list):
-    list2=list.copy()
-    list3=list.copy()
-    maxlist=[]
-    minlist=[]
-    for i in range(7):
-        listTemp=CreateQuasiList(list2, i)
-        minlist.append(min(listTemp))
-        maxlist.append(max(listTemp))
-
-    for obj1 in list3:
-        if(int(minlist[0])==int(maxlist[0])):
-            obj1.Age="[{0}]".format(minlist[0])
-        else:
-            obj1.Age="[{0}-{1}]".format(minlist[0],maxlist[0])
-        if(int(minlist[1])==int(maxlist[1])):
-            obj1.Gender="[{0}]".format(minlist[1])
-        else:
-            obj1.Gender="[{0}-{1}]".format(minlist[1],maxlist[1])
-        if(int(minlist[2])==int(maxlist[2])):
-            obj1.Marital="[{0}]".format(minlist[2])
-        else:
-            obj1.Marital="[{0}-{1}]".format(minlist[2],maxlist[2])
-        if(int(minlist[3])==int(maxlist[3])):
-            obj1.Race_Status="[{0}]".format(minlist[3])
-        else:
-            obj1.Race_Status="[{0}-{1}]".format(minlist[3],maxlist[3])
-        if(int(minlist[4])==int(maxlist[4])):
-            obj1.Birthplace="[{0}]".format(minlist[4])
-        else:
-            obj1.Birthplace="[{0}-{1}]".format(minlist[4],maxlist[4])
-        if(int(minlist[5])==int(maxlist[5])):
-            obj1.Language="[{0}]".format(minlist[5])
-        else:
-            obj1.Language="[{0}-{1}]".format(minlist[5],maxlist[5])
-        if(int(minlist[6])==int(maxlist[6])):
-            obj1.Occupation="[{0}]".format(minlist[6])
-        else:
-            obj1.Occupation="[{0}-{1}]".format(minlist[6],maxlist[6])
-    
-    return list3
-
-def Anonymize(list, k):
-    #if cut is not allowed
-    if int(len(list)/2)<k:
-        list=summary(list)
-        #return the partition with summary
-        return list
-    else:
-        #if cut is allowed
-        Dim=random.randint(0,6)
-        list2=list.copy()
-        SplitVal=FindMedian(FindCumulativeFreq(FindFreqSet(CreateQuasiList(list2, Dim))),list2)
-        list = sorted(list, key=lambda record: record.Dim(Dim))
-        
-        #split lhs, rhs find the anonymization of it, then find the union of both lists
-        Max=SplitVal
-        Min=SplitVal
-        Lhs=list[:Max]
-        Rhs=list[Min:]
-        return Anonymize(Lhs, k)+(Anonymize(Rhs,k))
+        target = total // 2
+    return target
 
 
-#this is code will do all the work.
-for i in Anonymize(listAll, 3):
-    print(i.str())
+def generalize(records):
+    """Generalize quasi-identifiers by replacing values with [min-max] ranges."""
+    num_quasi = len(DIMENSIONS) - 1  # Exclude Income (sensitive attribute)
+    for dim_idx in range(num_quasi):
+        values = get_dimension_values(records, dim_idx)
+        min_val = min(values)
+        max_val = max(values)
+        attr_name = DIMENSIONS[dim_idx]
+        if min_val == max_val:
+            generalized = f"[{min_val}]"
+        else:
+            generalized = f"[{min_val}-{max_val}]"
+        for record in records:
+            setattr(record, attr_name, generalized)
+    return records
+
+
+def anonymize(records, k):
+    """Recursively partition and generalize records to achieve k-anonymity."""
+    if len(records) // 2 < k:
+        return generalize(records)
+
+    dim = random.randint(0, len(DIMENSIONS) - 2)  # Random quasi-identifier dimension
+    dim_values = get_dimension_values(records, dim)
+    freq_set = find_freq_set(dim_values)
+    cum_freq = find_cumulative_freq(freq_set)
+    split_index = find_median_index(cum_freq)
+
+    records.sort(key=lambda r: r.dim(dim))
+
+    left = records[:split_index]
+    right = records[split_index:]
+
+    return anonymize(left, k) + anonymize(right, k)
+
+
+def main():
+    desc = textwrap.dedent("""\
+        K-Anonymization
+
+        Apply k-anonymization to a dataset by recursively partitioning
+        and generalizing quasi-identifiers.
+
+        Input file: space-separated values with 8 columns per row
+        (Age, Gender, Marital, Race_Status, Birthplace, Language, Occupation, Income)
+
+        Usage:
+            python K-Anonymization.py --input ipums.txt --k 3
+    """)
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=desc,
+    )
+    parser.add_argument("--input", "-I", type=str, default="ipums.txt", help="Input dataset file (default: ipums.txt)")
+    parser.add_argument("--k", "-K", type=int, default=3, help="K-anonymity parameter (default: 3)")
+
+    args = parser.parse_args()
+
+    records = load_records(args.input)
+    if not records:
+        print("No records loaded.", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Loaded {len(records)} records. Applying {args.k}-anonymization...")
+    result = anonymize(records, args.k)
+
+    for record in result:
+        print(record)
+
+    print(f"\nAnonymized {len(result)} records with k={args.k}")
+
+
+if __name__ == "__main__":
+    main()
