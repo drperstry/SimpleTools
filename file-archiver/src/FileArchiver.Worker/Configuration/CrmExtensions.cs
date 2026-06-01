@@ -1,5 +1,4 @@
 using Newtonsoft.Json.Linq;
-using System.Net;
 using System.Net.Http.Headers;
 
 namespace FileArchiver.Worker.Configuration;
@@ -49,23 +48,12 @@ internal static class CrmExtensions
 
     private static HttpClient BuildClientAd(ICrmConfig crmConfig)
     {
-        var handler = new HttpClientHandler();
-
-        if (!string.IsNullOrWhiteSpace(crmConfig.Name))
+        var handler = new HttpClientHandler
         {
-            handler.PreAuthenticate = true;
-            handler.UseDefaultCredentials = false;
-            handler.Credentials = !string.IsNullOrWhiteSpace(crmConfig.Domain)
-                ? new NetworkCredential(crmConfig.Name.Decrypt(), crmConfig.Code.Decrypt(), crmConfig.Domain)
-                : new NetworkCredential(crmConfig.Name.Decrypt(), crmConfig.Code.Decrypt());
-        }
+            UseDefaultCredentials = true,
+            PreAuthenticate = true
+        };
 
         return new HttpClient(handler) { BaseAddress = new Uri(crmConfig.ServiceUrl) };
     }
-
-    /// <summary>
-    /// Placeholder for credential decryption.
-    /// Replace the body with your own decryption logic (matches BabCrm.Core.Decrypt()).
-    /// </summary>
-    internal static string Decrypt(this string value) => value;
 }

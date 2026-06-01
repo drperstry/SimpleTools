@@ -18,10 +18,7 @@ public interface ICrmConfig
     string ClientExternal { get; }   // client_id
     string ClientInternal { get; }   // client_secret
 
-    // --- AD / NetworkCredential ---
-    string Domain { get; }
-
-    // --- Shared (username / password, may be encrypted) ---
+    // --- ADFS only: domain username / password ---
     string Name { get; }
     string Code { get; }
 }

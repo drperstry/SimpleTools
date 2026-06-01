@@ -16,10 +16,7 @@ public sealed class CrmConfig : ICrmConfig
     public string ClientExternal { get; init; } = string.Empty;
     public string ClientInternal { get; init; } = string.Empty;
 
-    // AD / NetworkCredential
-    public string Domain { get; init; } = string.Empty;
-
-    // Credentials (store encrypted; extend Decrypt() in CrmExtensions if needed)
+    // ADFS only: username / password
     public string Name { get; init; } = string.Empty;
     public string Code { get; init; } = string.Empty;
 }
