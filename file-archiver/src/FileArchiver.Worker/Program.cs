@@ -9,6 +9,11 @@ using Serilog;
 bool runNow = args.Contains("--run-now");
 
 var host = Host.CreateDefaultBuilder(args)
+    .ConfigureAppConfiguration(config =>
+    {
+        if (runNow)
+            config.AddInMemoryCollection(new Dictionary<string, string?> { ["RunNow"] = "true" });
+    })
     .UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration))
     .ConfigureServices((ctx, services) =>
     {
@@ -40,7 +45,6 @@ var host = Host.CreateDefaultBuilder(args)
         }
 
         services.AddTransient<IFileArchivalService, FileArchivalService>();
-        services.AddSingleton(runNow);
         services.AddHostedService<ArchivalWorker>();
     })
     .Build();

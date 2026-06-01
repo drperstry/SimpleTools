@@ -1,6 +1,7 @@
 using Cronos;
 using FileArchiver.Worker.Configuration;
 using FileArchiver.Worker.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,14 +21,13 @@ public sealed class ArchivalWorker : BackgroundService
         IFileArchivalService archivalService,
         IOptions<ArchivalOptions> options,
         ILogger<ArchivalWorker> logger,
-        IHostApplicationLifetime lifetime,
-        bool runNow = false)
+        IConfiguration configuration)
     {
         _crmService = crmService;
         _archivalService = archivalService;
         _options = options.Value;
         _logger = logger;
-        _runNow = runNow;
+        _runNow = configuration.GetValue<bool>("RunNow");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
