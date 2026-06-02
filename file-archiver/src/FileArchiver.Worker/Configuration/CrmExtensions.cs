@@ -21,8 +21,8 @@ internal static class CrmExtensions
             ["client_id"]     = crmConfig.ClientExternal,
             ["client_secret"] = crmConfig.ClientInternal,
             ["resource"]      = crmConfig.ServiceUrl,
-            ["username"]      = crmConfig.Name.Decrypt(),
-            ["password"]      = crmConfig.Code.Decrypt(),
+            ["username"]      = crmConfig.Name,
+            ["password"]      = crmConfig.Code,
             ["grant_type"]    = "password"
         };
 

@@ -2,7 +2,6 @@ using FileArchiver.Worker.Configuration;
 using FileArchiver.Worker.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.IO;
 
 namespace FileArchiver.Worker.Services;
 

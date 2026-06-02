@@ -15,7 +15,7 @@ public static class RetryHelper
                 MaxRetryAttempts = opts.RetryCount,
                 Delay = TimeSpan.FromSeconds(opts.RetryDelaySeconds),
                 BackoffType = DelayBackoffType.Exponential,
-                ShouldHandle = new PredicateBuilder().Handle<IOException>(),
+                ShouldHandle = new PredicateBuilder().Handle<System.IO.IOException>(),
                 OnRetry = args =>
                 {
                     logger.LogWarning(
@@ -26,7 +26,10 @@ public static class RetryHelper
                     return ValueTask.CompletedTask;
                 }
             })
-            .AddTimeout(TimeSpan.FromMinutes(30))
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromMinutes(30)
+            })
             .Build();
 
     public static ResiliencePipeline BuildCrmRetry(ArchivalOptions opts, ILogger logger) =>
@@ -49,6 +52,9 @@ public static class RetryHelper
                     return ValueTask.CompletedTask;
                 }
             })
-            .AddTimeout(TimeSpan.FromMinutes(5))
+            .AddTimeout(new TimeoutStrategyOptions
+            {
+                Timeout = TimeSpan.FromMinutes(5)
+            })
             .Build();
 }
